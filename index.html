@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lotus nebula</title><link rel="icon" href="data:,">
+<style>
+  :root { --bg: #07060b; --panel: rgba(16, 13, 24, .88); --ink: #e6e1ef; --dim: #8d87a0; --line: #2a2438; --acc: #d48fc0; --acc2: #7fd0d8; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 12px/1.4 system-ui, sans-serif; overflow: hidden; }
+  #gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: grab; touch-action: none; }
+  #gl:active { cursor: grabbing; }
+  #ui { position: fixed; top: 10px; right: 10px; bottom: 10px; width: 300px; overflow-y: auto; background: var(--panel); border: 1px solid var(--line);
+        border-radius: 10px; padding: 10px 12px; backdrop-filter: blur(8px); box-sizing: border-box; }
+  #ui.folded { bottom: auto; overflow: hidden; }
+  #ui.folded section, #ui.folded .sub { display: none; }
+  h1 { font-size: 13px; margin: 0; letter-spacing: .05em; display: flex; justify-content: space-between; align-items: center; }
+  h1 button { font-size: 11px; }
+  .sub { color: var(--dim); font-size: 11px; margin: 3px 0 6px; }
+  section { border-top: 1px solid var(--line); padding: 7px 0 4px; }
+  section h2 { font-size: 11px; font-weight: 600; color: var(--acc2); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 4px; }
+  label { display: flex; align-items: center; gap: 8px; margin: 4px 0; color: var(--dim); }
+  label > span:first-child { width: 78px; flex: none; }
+  label b { color: var(--ink); font-weight: 500; min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+  input[type=range] { flex: 1; min-width: 0; accent-color: var(--acc); height: 3px; }
+  select { flex: 1; background: #120f1b; color: var(--ink); border: 1px solid var(--line); border-radius: 5px; padding: 2px 4px; font: inherit; }
+  button { background: #1c1729; color: var(--ink); border: 1px solid var(--line); border-radius: 5px; padding: 3px 8px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--acc); }
+  button.on { background: #3a2140; border-color: var(--acc); }
+  .row { display: flex; gap: 5px; flex-wrap: wrap; margin: 4px 0; }
+  .note { color: var(--dim); font-size: 10.5px; margin: 3px 0; }
+  #hist { width: 100%; height: 64px; display: block; background: #0d0b14; border: 1px solid var(--line); border-radius: 5px; }
+  #status { font: 10.5px/1.5 ui-monospace, monospace; color: var(--dim); white-space: pre-wrap; }
+  #err { position: fixed; left: 12px; bottom: 12px; color: #ff9a9a; font: 12px ui-monospace, monospace; white-space: pre-wrap; max-width: 60vw; }
+  @media (max-width: 640px) { #ui { width: auto; left: 10px; top: auto; height: 46vh; } }
+</style></head>
+<body>
+<canvas id="gl"></canvas>
+<div id="ui">
+  <h1>LOTUS NEBULA <button id="fold" title="fold panel">–</button></h1>
+  <div class="sub">A 4-D IFS flame. Rolling points: every point has a fixed address, so it slides when settings ease. b-splats: Σ = J Σ_A Jᵀ, the footprint of the small copy of the fractal each point sits in.</div>
+
+  <section><h2>Fractal</h2>
+    <label><span>preset</span><select id="preset"></select></label>
+    <div id="macros"></div>
+  </section>
+
+  <section><h2>Bloom · keyframes</h2>
+    <div class="row"><button id="play">▶ Bloom</button><button id="setA">Set A = now</button><button id="setB">Set B = now</button></div>
+    <label><span>t</span><input id="t" type="range" min="0" max="1" step="0.001"><b id="t_v"></b></label>
+    <label><span>easing</span><select id="ease"><option value="smooth">smoothstep</option><option value="cubic">cubic in-out</option><option value="sine">sine in-out</option><option value="back">back out (overshoot)</option><option value="linear">linear</option></select></label>
+    <label><span>seconds</span><input id="dur" type="range" min="0.5" max="12" step="0.1" value="4"><b id="dur_v"></b></label>
+    <label><span>addresses</span><select id="seedmode"><option value="fixed">fixed · rolling</option><option value="reseed">reseeded each frame · classic</option></select></label>
+    <div class="note">Classic = the chaos game restarted every frame: same picture on average, but every point jumps.</div>
+  </section>
+
+  <section><h2>4-D turn</h2>
+    <label><span>xw</span><input id="xw" type="range" min="-3.1416" max="3.1416" step="0.01"><b id="xw_v"></b></label>
+    <label><span>yw</span><input id="yw" type="range" min="-3.1416" max="3.1416" step="0.01"><b id="yw_v"></b></label>
+    <label><span>zw</span><input id="zw" type="range" min="-3.1416" max="3.1416" step="0.01"><b id="zw_v"></b></label>
+    <div class="row"><button id="wspin">w-spin</button><button id="turn">turntable</button><button id="recentre">recentre</button></div>
+  </section>
+
+  <section><h2>Points · splats</h2>
+    <label><span>points</span><select id="N"><option value="256">65k</option><option value="512">262k</option><option value="1024">1M</option><option value="2048">2M</option></select></label>
+    <label><span>style</span><select id="style"><option value="2">b-splat · Σ = J Σ_A Jᵀ</option><option value="1">round (same size)</option><option value="0">points</option></select></label>
+    <label><span>depth K</span><input id="K" type="range" min="4" max="64" step="1"><b id="K_v"></b></label>
+    <label><span>splat depth</span><input id="KS" type="range" min="1" max="16" step="1"><b id="KS_v"></b></label>
+    <label><span>splat size</span><input id="size" type="range" min="0.05" max="3" step="0.01" value="1"><b id="size_v"></b></label>
+    <label><span>min px²</span><input id="floor" type="range" min="0.05" max="4" step="0.05" value="0.3"><b id="floor_v"></b></label>
+    <label><span>exposure</span><input id="exposure" type="range" min="-3" max="4" step="0.05" value="0.5"><b id="exposure_v"></b></label>
+    <label><span>gamma</span><input id="gamma" type="range" min="1" max="5" step="0.05" value="2.2"><b id="gamma_v"></b></label>
+    <label><span>palette</span><select id="palette"><option>lotus</option><option>ember</option><option>ice</option><option>spectrum</option></select></label>
+    <label><span>colour by w</span><input id="whue" type="range" min="0" max="1" step="0.01" value="0.25"><b id="whue_v"></b></label>
+  </section>
+
+  <section><h2>Flatness meter · √(λ₃/λ₂) per splat</h2>
+    <canvas id="hist" width="552" height="128"></canvas>
+    <div class="note" id="flatnote">0 = the local piece is a sheet (or a thread) · 1 = solid</div>
+  </section>
+
+  <section><h2>Export</h2>
+    <label><span>opacity</span><input id="eop" type="range" min="0.01" max="1" step="0.01" value="0.12"><b id="eop_v"></b></label>
+    <div class="row"><button id="ply">3DGS .ply (direct, no photos)</button></div>
+    <div class="note">Every splat is written as a 3-D Gaussian (mean, scale, rotation, colour, opacity) straight from the IFS.</div>
+  </section>
+
+  <section><div id="status"></div></section>
+</div>
+<div id="err"></div>
+<script type="module" src="app.js"></script>
+</body></html>

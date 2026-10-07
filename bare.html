@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lotus nebula (bare)</title><link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; background: #07060b; color: #e6e1ef; font: 13px system-ui, sans-serif; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; touch-action: none; }
+  #bar { position: fixed; left: 12px; bottom: 12px; display: flex; gap: 10px; align-items: center; background: rgba(16, 13, 24, .8); padding: 8px 10px; border-radius: 8px; }
+  input[type=range] { width: 240px; max-width: 40vw; }
+  #err { position: fixed; left: 12px; top: 12px; color: #ff9a9a; white-space: pre-wrap; }
+</style></head>
+<body>
+<canvas id="gl"></canvas>
+<div id="bar"><select id="preset"></select><label>t <input id="t" type="range" min="0" max="1" step="0.001" value="0"></label></div>
+<div id="err"></div>
+<script type="module">
+// The bare reference: the bones (ifs.js, renderer.js) and only enough glue to see them. Drag to orbit, wheel to zoom.
+// Moving t eases the preset's keyframes A → B; the points keep their addresses, so they roll instead of re-burning.
+import { PRESETS, rot, autoKS, sceneU, fitL, fitFrame, macrosAt, defaultMacros } from './ifs.js';
+import { createRenderer } from './renderer.js';
+const $ = (id) => document.getElementById(id);
+try {
+  const canvas = $('gl'), R = createRenderer(canvas), pts = R.setPoints(512);
+  const cam = { az: .5, el: .6, dist: 3, ctr: [0, 0, 0], fov: .7 };
+  let preset, base, st;
+  const rebuild = (t) => { const m = macrosAt(preset, PRESETS[preset].A, PRESETS[preset].B, base, t); st.U = sceneU(preset, m).U; Object.assign(st, fitL(st.U, st)); };
+  function load(name) {
+    preset = name; base = defaultMacros(name); const pr = PRESETS[name];
+    st = { K: 24, KS: 8, seed: 0, R4: rot({}), L: rot({}), style: 2, size: 1, floor: .3, exposure: .5, gamma: 2.2, palette: 'lotus', whue: .25, sigma: 1 };
+    rebuild(+$('t').value); st.KS = autoKS(sceneU(name, base).xfs, pts.N);
+    const f = fitFrame([0, 1].map(t => sceneU(name, macrosAt(name, pr.A, pr.B, base, t)).U), st);
+    Object.assign(cam, { ctr: f.ctr, dist: 1.4 * f.R / Math.tan(cam.fov / 2), az: pr.view.az, el: pr.view.el }); dirty = true;
+  }
+  let dirty = true, drag = null;
+  for (const [k, p] of Object.entries(PRESETS)) $('preset').add(new Option(p.label, k));
+  $('preset').onchange = () => load($('preset').value);
+  $('t').oninput = () => { rebuild(+$('t').value); dirty = true; };
+  canvas.onpointerdown = e => { drag = [e.clientX, e.clientY]; canvas.setPointerCapture(e.pointerId); };
+  canvas.onpointermove = e => { if (!drag) return; cam.az -= (e.clientX - drag[0]) * .006; cam.el = Math.max(-1.5, Math.min(1.5, cam.el + (e.clientY - drag[1]) * .006)); drag = [e.clientX, e.clientY]; dirty = true; };
+  canvas.onpointerup = () => { drag = null; };
+  canvas.addEventListener('wheel', e => { e.preventDefault(); cam.dist *= Math.exp(e.deltaY * .001); dirty = true; }, { passive: false });
+  load('lotus');
+  (function frame() {
+    const w = innerWidth, h = innerHeight; if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; dirty = true; }
+    if (dirty) { R.evalPass(st); R.drawPass(st, cam); dirty = false; }
+    requestAnimationFrame(frame);
+  })();
+  // for the control: draw and read in the SAME task (a WebGL canvas read outside its frame comes back blank)
+  window.__bare = { ready: true, lit: () => { R.evalPass(st); R.drawPass(st, cam); const g = R.gl, p = new Uint8Array(canvas.width * canvas.height * 4);
+    g.bindFramebuffer(g.FRAMEBUFFER, null); g.readPixels(0, 0, canvas.width, canvas.height, g.RGBA, g.UNSIGNED_BYTE, p); let n = 0; for (let i = 0; i < p.length; i += 4) if (p[i] + p[i + 1] + p[i + 2] > 60) n++; return n / (p.length / 4); } };
+} catch (e) { $('err').textContent = e.message; }
+</script>
+</body></html>
