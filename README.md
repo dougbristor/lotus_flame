@@ -16,7 +16,9 @@ Bristorian algebra.
 
 ## Run it
 
-Serve this folder with any static web server and open it in a browser with WebGL2 and
+**Online:** [bristorbrot.org/lotus](https://bristorbrot.org/lotus/), serving these exact files.
+
+**Locally:** serve this folder with any static web server and open it in a browser with WebGL2 and
 `EXT_color_buffer_float`:
 
 ```sh
@@ -67,7 +69,8 @@ No build step and no dependencies: the page loads only its own files.
 ## Checks
 
 `node tools/check.mjs` (Node 22.7+, `npm i playwright`, `npx playwright install firefox`) serves this folder
-on a private port and runs six checks. Each one has a planted fault that must make it fail, so a check that
+on a private port and runs six checks. `LOTUS_BASE=https://bristorbrot.org/lotus/demo/ node tools/check.mjs` runs the
+same checks against the hosted copy. Each one has a planted fault that must make it fail, so a check that
 cannot fire is reported as dead.
 
 | check | what it compares | planted fault |
@@ -79,7 +82,7 @@ cannot fire is reported as dead.
 | X | `.ply` round trip: Σ rebuilt from the written scale and rotation | quaternion written in the wrong order |
 | V | every preset and the bare page draw, with no page errors | |
 
-All pass on the published files (2026-10-07).
+All pass on the published files and on the hosted copy (2026-10-07).
 
 **Open:** no independent 3DGS viewer has loaded the exported `.ply` yet. The encoding round trip (X) agrees
 to 5e-7, but the claim that the export opens correctly elsewhere still needs a real viewer, overlaid at the

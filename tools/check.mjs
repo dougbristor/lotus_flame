@@ -22,8 +22,12 @@ const server = createServer(async (req, res) => {
     res.writeHead(200, { 'content-type': TYPES[extname(path) || '.html'] ?? 'application/octet-stream' }); res.end(body); }
   catch { res.writeHead(404); res.end(); }
 });
-await new Promise(r => server.listen(0, '127.0.0.1', r));
-const BASE = `http://127.0.0.1:${server.address().port}/`;
+// LOTUS_BASE=https://bristorbrot.org/lotus/demo/ checks a hosted copy instead (its files must equal this folder's:
+// the CPU mirror below is this folder's ifs.js).
+const REMOTE = process.env.LOTUS_BASE;
+if (!REMOTE) await new Promise(r => server.listen(0, '127.0.0.1', r));
+const BASE = REMOTE ? REMOTE.replace(/\/?$/, '/') : `http://127.0.0.1:${server.address().port}/`;
+console.log(`checking ${REMOTE ? BASE : 'this folder (private server)'}`);
 const b = await firefox.launch({ headless: true }); let fails = 0;
 const ok = (c, m) => { if (!c) fails++; console.log((c ? 'ok   ' : 'FIRE ') + m); };
 const plant = (c, m) => { if (!c) fails++; console.log((c ? 'ok   ' : 'DEAD ') + 'planted ' + m); };   // a planted fault that did NOT fire = dead control
@@ -109,4 +113,4 @@ for (const pre of Object.keys(I.PRESETS)) { const lit = await p.evaluate((pre) =
   const lit = await pb.evaluate(() => window.__bare.lit());   // same-task read (step readpixels-in-raf: a drawImage read came back 0% on a visibly rendering canvas)
   ok(lit > .02 && eb.length === 0 && !(await pb.textContent('#err')), `V bare.html (bones only): lit ${(100 * lit).toFixed(1)}%, errors ${eb.length ? eb.join(' | ') : 'none'}`); }
 ok(errs.length === 0, `page errors: ${errs.length ? errs.join(' | ') : 'none'}`);
-console.log(fails ? `\n${fails} FIRED` : '\nall ok'); await b.close(); process.exit(fails ? 1 : 0);
+console.log(fails ? `\n${fails} FIRED` : '\nall ok'); await b.close(); server.close(); process.exit(fails ? 1 : 0);
