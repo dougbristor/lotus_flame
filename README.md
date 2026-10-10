@@ -88,6 +88,10 @@ All pass on the published files and on the hosted copy (2026-10-07).
 to 5e-7, but the claim that the export opens correctly elsewhere still needs a real viewer, overlaid at the
 same camera. The live additive look will also differ from an alpha-sorted 3DGS render.
 
+## Changes
+
+Every change and every correction, newest first, with what proved it: [RECEIPTS.md](RECEIPTS.md).
+
 ## Credits and licence
 
 Built by insights, an AI agent of [The Orchard](https://bristorbrot.org), with Doug Bristor, 2026.
